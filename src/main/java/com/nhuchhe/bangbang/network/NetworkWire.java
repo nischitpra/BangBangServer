@@ -1,8 +1,7 @@
-package bangbang.network;
+package com.nhuchhe.bangbang.network;
 
-import bangbang.enums.GameManagerAction;
-import bangbang.pojo.Counter;
-import bangbang.pojo.GameManagerPojo;
+import com.nhuchhe.bangbang.pojo.network.Counter;
+import com.nhuchhe.bangbang.pojo.network.GameManagerPojo;
 import org.apache.commons.lang3.SerializationUtils;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
@@ -12,12 +11,15 @@ import java.util.HashMap;
 
 public class NetworkWire {
 
-    private HashMap<String, Counter> gameNameToPlayerIdMap = new HashMap<>();
+    private HashMap<String, Counter> gameNameToPlayerIdMap = new HashMap<String, Counter>() {{
+        put("hello_bello", new Counter());
+        put("test_lobby", new Counter());
+    }};
 
     private ZContext context = new ZContext();
+    private ZMQ.Socket gameManagerSocket;
     private ZMQ.Socket inGameSenderSocket;
     private ZMQ.Socket inGameReceiverSocket;
-    private ZMQ.Socket gameManagerSocket;
 
     private Thread gameManagerThread;
     private Thread inGameBroadcastSenderThread;
@@ -47,18 +49,30 @@ public class NetworkWire {
             public void run() {
                 while (true) {
                     GameManagerPojo managerPojo = SerializationUtils.deserialize(gameManagerSocket.recv());
-                    if (managerPojo.action == GameManagerAction.JOIN_GAME) {
-                        String gameName = managerPojo.data;
-                        try {
-                            gameManagerSocket.send(gameNameToPlayerIdMap.get(gameName).increment() + "");
-                            inGameReceiverSocket.subscribe(gameName);
-                        } catch (Exception e) {
-                            Counter counter = new Counter();
-                            gameNameToPlayerIdMap.put(gameName, counter);
-                            gameManagerSocket.send(counter.count + "");
-                        }
-                    } else {
-                        gameManagerSocket.send("pong");
+                    String data = managerPojo.data;
+                    Counter counter = gameNameToPlayerIdMap.get(data);
+                    switch (managerPojo.action) {
+                        case GET_LOBBY:
+                            gameManagerSocket.send(SerializationUtils.serialize(gameNameToPlayerIdMap.keySet().toArray(new String[0])));
+                            break;
+                        case CREATE_LOBBY:
+                            if (counter == null) {
+                                counter = new Counter();
+                                gameNameToPlayerIdMap.put(data, counter);
+                                gameManagerSocket.send(counter.count + "");
+                            } else {
+                                gameManagerSocket.send(-1 + "");
+                            }
+                            break;
+                        case JOIN_GAME:
+                            if (counter == null) {
+                                gameManagerSocket.send(-1 + "");
+                            } else {
+                                gameManagerSocket.send(counter.increment() + "");
+                            }
+                            break;
+                        case START_GAME:
+                            break;
                     }
                 }
             }

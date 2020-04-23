@@ -1,4 +1,4 @@
-package bangbang.pojo;
+package com.nhuchhe.bangbang.pojo.network;
 
 public class Counter {
     public int count;

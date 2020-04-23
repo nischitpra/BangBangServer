@@ -1,6 +1,6 @@
-package bangbang;
+package com.nhuchhe.bangbang;
 
-import bangbang.network.NetworkWire;
+import com.nhuchhe.bangbang.network.NetworkWire;
 
 public class Starter {
 
