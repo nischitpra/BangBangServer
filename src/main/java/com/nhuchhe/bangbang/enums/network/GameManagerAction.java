@@ -6,7 +6,10 @@ public enum GameManagerAction {
     JOIN_LOBBY,
     GET_LOBBY_PLAYERS,
     CHANGE_SCREEN,
-    START_GAME;
+    START_GAME,
+    DISCONNECT
+
+    ;
 
     private static final long serialVersionUID = 1L;
 

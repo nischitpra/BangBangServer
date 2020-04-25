@@ -9,4 +9,11 @@ public class GameManagerPojo implements Serializable {
 
     public GameManagerAction action;
     public String data;
+    public Object extra;
+
+    @Override
+    public String toString() {
+        return String.format("action: %s, data: %s", action.name(), data);
+    }
+
 }

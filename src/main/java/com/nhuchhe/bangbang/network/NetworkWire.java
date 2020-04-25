@@ -3,6 +3,7 @@ package com.nhuchhe.bangbang.network;
 import com.nhuchhe.bangbang.enums.network.GameManagerAction;
 import com.nhuchhe.bangbang.pojo.network.GameManagerPojo;
 import com.nhuchhe.bangbang.pojo.network.Lobby;
+import com.nhuchhe.bangbang.utilities.Logger;
 import org.apache.commons.lang3.SerializationUtils;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
@@ -20,7 +21,6 @@ public class NetworkWire {
     private ZMQ.Socket inGameReceiverSocket;
 
     private Thread gameManagerThread;
-    private Thread inGameBroadcastSenderThread;
     private Thread inGameBroadcastReceiverThread;
 
     public void init() throws InterruptedException {
@@ -45,21 +45,24 @@ public class NetworkWire {
         gameManagerThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                while (true) {
+                while (!Thread.currentThread().isInterrupted()) {
                     GameManagerPojo managerPojo = SerializationUtils.deserialize(gameManagerSocket.recv());
                     String data = managerPojo.data;
                     Lobby lobby = gameNameToPlayerIdMap.get(data);
                     switch (managerPojo.action) {
                         case CREATE_LOBBY:
                             if (lobby == null) {
+                                Logger.log("creating lobby");
                                 lobby = new Lobby(data);
                                 gameNameToPlayerIdMap.put(data, lobby);
                                 gameManagerSocket.send(SerializationUtils.serialize(true));
                             } else {
+                                Logger.log("lobby is not null");
                                 gameManagerSocket.send(SerializationUtils.serialize(false));
                             }
                             break;
                         case GET_LOBBY:
+                            Logger.log("get lobbies");
                             gameManagerSocket.send(SerializationUtils.serialize(gameNameToPlayerIdMap.keySet().toArray(new String[0])));
                             break;
                         case JOIN_LOBBY:
@@ -87,6 +90,14 @@ public class NetworkWire {
                                 inGameSenderSocket.send(SerializationUtils.serialize(managerPojo));
                             }
                             break;
+                        case DISCONNECT:
+                            int id = (int) managerPojo.extra;
+                            lobby.playerIdSet.remove(id);
+                            if (lobby.playerIdSet.size() == 0) {
+                                gameNameToPlayerIdMap.remove(data);
+                                Logger.log("removed lobby: " + data);
+
+                            }
                     }
                 }
             }
@@ -98,27 +109,12 @@ public class NetworkWire {
         inGameBroadcastReceiverThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                while (true) {
+                while (!Thread.currentThread().isInterrupted()) {
                     String value = inGameReceiverSocket.recvStr();
-                    System.out.println("val: " + value);
+                    Logger.log("val: " + value);
                 }
             }
         });
         inGameBroadcastReceiverThread.start();
-
-        inGameBroadcastSenderThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    inGameSenderSocket.send("GAME_NAME-HELLO_FROM_SERVER!");
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        });
-        inGameBroadcastSenderThread.start();
     }
 }
