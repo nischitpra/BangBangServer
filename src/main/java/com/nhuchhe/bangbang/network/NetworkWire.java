@@ -1,7 +1,8 @@
 package com.nhuchhe.bangbang.network;
 
-import com.nhuchhe.bangbang.pojo.network.Counter;
+import com.nhuchhe.bangbang.enums.network.GameManagerAction;
 import com.nhuchhe.bangbang.pojo.network.GameManagerPojo;
+import com.nhuchhe.bangbang.pojo.network.Lobby;
 import org.apache.commons.lang3.SerializationUtils;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
@@ -11,10 +12,7 @@ import java.util.HashMap;
 
 public class NetworkWire {
 
-    private HashMap<String, Counter> gameNameToPlayerIdMap = new HashMap<String, Counter>() {{
-        put("hello_bello", new Counter());
-        put("test_lobby", new Counter());
-    }};
+    private HashMap<String, Lobby> gameNameToPlayerIdMap = new HashMap();
 
     private ZContext context = new ZContext();
     private ZMQ.Socket gameManagerSocket;
@@ -50,28 +48,44 @@ public class NetworkWire {
                 while (true) {
                     GameManagerPojo managerPojo = SerializationUtils.deserialize(gameManagerSocket.recv());
                     String data = managerPojo.data;
-                    Counter counter = gameNameToPlayerIdMap.get(data);
+                    Lobby lobby = gameNameToPlayerIdMap.get(data);
                     switch (managerPojo.action) {
+                        case CREATE_LOBBY:
+                            if (lobby == null) {
+                                lobby = new Lobby(data);
+                                gameNameToPlayerIdMap.put(data, lobby);
+                                gameManagerSocket.send(SerializationUtils.serialize(true));
+                            } else {
+                                gameManagerSocket.send(SerializationUtils.serialize(false));
+                            }
+                            break;
                         case GET_LOBBY:
                             gameManagerSocket.send(SerializationUtils.serialize(gameNameToPlayerIdMap.keySet().toArray(new String[0])));
                             break;
-                        case CREATE_LOBBY:
-                            if (counter == null) {
-                                counter = new Counter();
-                                gameNameToPlayerIdMap.put(data, counter);
-                                gameManagerSocket.send(counter.count + "");
+                        case JOIN_LOBBY:
+                            if (lobby == null) {
+                                gameManagerSocket.send(SerializationUtils.serialize(-1));
                             } else {
-                                gameManagerSocket.send(-1 + "");
+                                gameManagerSocket.send(SerializationUtils.serialize(lobby.addPlayer()));
                             }
                             break;
-                        case JOIN_GAME:
-                            if (counter == null) {
-                                gameManagerSocket.send(-1 + "");
+                        case GET_LOBBY_PLAYERS:
+                            if (lobby == null) {
+                                gameManagerSocket.send(SerializationUtils.serialize(new int[]{}));
                             } else {
-                                gameManagerSocket.send(counter.increment() + "");
+                                gameManagerSocket.send(SerializationUtils.serialize(lobby.getPlayerIdsArray()));
                             }
                             break;
                         case START_GAME:
+                            if (lobby == null) {
+                                gameManagerSocket.send(SerializationUtils.serialize(false));
+                            } else {
+                                gameManagerSocket.send(SerializationUtils.serialize(true));
+                                inGameSenderSocket.send(data, ZMQ.SNDMORE); // send topic
+                                managerPojo.action = GameManagerAction.CHANGE_SCREEN;
+                                managerPojo.data = "GameScreen";
+                                inGameSenderSocket.send(SerializationUtils.serialize(managerPojo));
+                            }
                             break;
                     }
                 }
