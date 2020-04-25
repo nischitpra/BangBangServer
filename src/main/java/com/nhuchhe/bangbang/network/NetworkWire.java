@@ -25,13 +25,13 @@ public class NetworkWire {
 
     public void init() throws InterruptedException {
         gameManagerSocket = context.createSocket(SocketType.REP);
-        gameManagerSocket.bind("tcp://localhost:5554");
-
+        gameManagerSocket.bind("tcp://192.168.0.169:5554");
+//todo: instead of connect. bind here as well for rep
         inGameReceiverSocket = context.createSocket(SocketType.SUB);
-        inGameReceiverSocket.connect("tcp://localhost:5555");
+        inGameReceiverSocket.connect("tcp://192.168.0.169:5555");
 
         inGameSenderSocket = context.createSocket(SocketType.PUB);
-        inGameSenderSocket.bind("tcp://localhost:5556");
+        inGameSenderSocket.bind("tcp://192.168.0.169:5556");
 
         createServer();
     }
