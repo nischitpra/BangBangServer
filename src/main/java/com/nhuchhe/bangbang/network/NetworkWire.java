@@ -17,8 +17,8 @@ public class NetworkWire {
 
     private ZContext context = new ZContext();
     private ZMQ.Socket gameManagerSocket;
-    private ZMQ.Socket inGameSenderSocket;
-    private ZMQ.Socket inGameReceiverSocket;
+    private ZMQ.Socket gameDataDownstream;
+    private ZMQ.Socket gameDataUpstream;
 
     private Thread gameManagerThread;
     private Thread inGameBroadcastReceiverThread;
@@ -26,12 +26,12 @@ public class NetworkWire {
     public void init() throws InterruptedException {
         gameManagerSocket = context.createSocket(SocketType.REP);
         gameManagerSocket.bind("tcp://192.168.0.169:5554");
-//todo: instead of connect. bind here as well for rep
-        inGameReceiverSocket = context.createSocket(SocketType.SUB);
-        inGameReceiverSocket.connect("tcp://192.168.0.169:5555");
 
-        inGameSenderSocket = context.createSocket(SocketType.PUB);
-        inGameSenderSocket.bind("tcp://192.168.0.169:5556");
+        gameDataUpstream = context.createSocket(SocketType.SUB);
+        gameDataUpstream.bind("tcp://192.168.0.169:5555");
+
+        gameDataDownstream = context.createSocket(SocketType.PUB);
+        gameDataDownstream.bind("tcp://192.168.0.169:5556");
 
         createServer();
     }
@@ -70,6 +70,10 @@ public class NetworkWire {
                                 gameManagerSocket.send(SerializationUtils.serialize(-1));
                             } else {
                                 gameManagerSocket.send(SerializationUtils.serialize(lobby.addPlayer()));
+                                gameDataUpstream.subscribe(lobby.lobbyName);
+                                gameDataUpstream.subscribe("game." + lobby.lobbyName);
+                                Logger.log("upstream subscribed to " + lobby.lobbyName);
+                                Logger.log("upstream subscribed to game." + lobby.lobbyName);
                             }
                             break;
                         case GET_LOBBY_PLAYERS:
@@ -84,10 +88,10 @@ public class NetworkWire {
                                 gameManagerSocket.send(SerializationUtils.serialize(false));
                             } else {
                                 gameManagerSocket.send(SerializationUtils.serialize(true));
-                                inGameSenderSocket.send(data, ZMQ.SNDMORE); // send topic
+                                gameDataDownstream.sendMore(data); // send topic
                                 managerPojo.action = GameManagerAction.CHANGE_SCREEN;
                                 managerPojo.data = "GameScreen";
-                                inGameSenderSocket.send(SerializationUtils.serialize(managerPojo));
+                                gameDataDownstream.send(SerializationUtils.serialize(managerPojo));
                             }
                             break;
                         case DISCONNECT:
@@ -110,8 +114,8 @@ public class NetworkWire {
             @Override
             public void run() {
                 while (!Thread.currentThread().isInterrupted()) {
-                    String value = inGameReceiverSocket.recvStr();
-                    Logger.log("val: " + value);
+                    gameDataDownstream.sendMore(gameDataUpstream.recv());// lobbyName
+                    gameDataDownstream.send(gameDataUpstream.recv());// ingamepojo
                 }
             }
         });
