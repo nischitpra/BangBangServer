@@ -91,6 +91,7 @@ public class NetworkWire {
                                 gameDataDownstream.sendMore(data); // send topic
                                 managerPojo.action = GameManagerAction.CHANGE_SCREEN;
                                 managerPojo.data = "GameScreen";
+                                managerPojo.extra = lobby.getPlayerIdsArray();
                                 gameDataDownstream.send(SerializationUtils.serialize(managerPojo));
                             }
                             break;
