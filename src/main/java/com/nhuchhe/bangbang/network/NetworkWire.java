@@ -12,7 +12,7 @@ import org.zeromq.ZMQ;
 import java.util.HashMap;
 
 public class NetworkWire {
-    String url = "bangbomb.herokuapp.com/"; //192.168.0.169
+    String url = "bangbomb.herokuapp.com"; //192.168.0.169
 
     private HashMap<String, Lobby> gameNameToPlayerIdMap = new HashMap();
 
