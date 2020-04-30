@@ -12,6 +12,7 @@ import org.zeromq.ZMQ;
 import java.util.HashMap;
 
 public class NetworkWire {
+    String url = "bangbomb.herokuapp.com/"; //192.168.0.169
 
     private HashMap<String, Lobby> gameNameToPlayerIdMap = new HashMap();
 
@@ -25,13 +26,13 @@ public class NetworkWire {
 
     public void init() throws InterruptedException {
         gameManagerSocket = context.createSocket(SocketType.REP);
-        gameManagerSocket.bind("tcp://192.168.0.169:5554");
+        gameManagerSocket.bind("tcp://" + url + ":5554");
 
         gameDataUpstream = context.createSocket(SocketType.SUB);
-        gameDataUpstream.bind("tcp://192.168.0.169:5555");
+        gameDataUpstream.bind("tcp://" + url + ":5555");
 
         gameDataDownstream = context.createSocket(SocketType.PUB);
-        gameDataDownstream.bind("tcp://192.168.0.169:5556");
+        gameDataDownstream.bind("tcp://" + url + ":5556");
 
         createServer();
     }
